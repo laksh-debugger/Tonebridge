@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tonebridge demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{margin:0;background:#fffbf5;color:#2b3350;font-family:Calibri,"Segoe UI",system-ui,sans-serif}
+  main{max-width:760px;margin:0 auto;padding:28px 20px}
+  h1{font-size:34px;margin:0 0 4px} h1 b{color:#e5645f}
+  p{color:#5b6483;line-height:1.5}
+  video{width:100%;border-radius:16px;background:#d9ecff;box-shadow:0 4px 14px rgba(201,184,166,.5)}
+  ol{color:#5b6483;line-height:1.7}
+  .card{background:#fff;border:1px solid #ffd3c7;border-radius:14px;padding:6px 18px;margin-top:18px}
+  code{background:#ffe3d6;border-radius:6px;padding:1px 6px;color:#d9603b}
+</style>
+</head>
+<body>
+<main>
+  <h1>Tone<b>bridge</b> demo</h1>
+  <p>A short test video with six emotional lines (angry, happy, sad, excited, neutral, angry). The captions are inside the video page, so Tonebridge can read them.</p>
+  <video id="v" controls preload="auto" crossorigin="anonymous">
+    <source src="sample.mp4" type="video/mp4">
+    <track kind="captions" src="captions.vtt" srclang="en" label="English" default>
+  </video>
+  <div class="card">
+    <ol>
+      <li>Start the server (<code>python server.py</code>) and load the extension.</li>
+      <li>Click the Tonebridge icon, switch it <b>on</b>, and pick a language.</li>
+      <li>Press play. You will hear each line with its feeling and see the emotion label on the video.</li>
+    </ol>
+  </div>
+</main>
+</body>
+</html>

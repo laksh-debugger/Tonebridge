@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tonebridge Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--navy:#2b3350;--muted:#5b6483;--coral:#e5645f;--coral-t:#d9603b;--peach:#ffe3d6}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fffbf5;color:var(--navy);font-family:Calibri,"Segoe UI",system-ui,sans-serif}
+  main{max-width:780px;margin:0 auto;padding:28px 20px 60px}
+  h1{font-size:34px;margin:0 0 4px} h1 b{color:var(--coral)}
+  h2{font-size:18px;margin:0 0 8px}
+  p{color:var(--muted);line-height:1.5;margin:6px 0}
+  .card{background:#fff;border:1px solid #ffd3c7;border-radius:14px;padding:16px 18px;margin-top:16px;box-shadow:0 2px 8px rgba(201,184,166,.3)}
+  .card.blue{border-color:#cfe3fa} .card.mint{border-color:#c5e8d1}
+  .badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--peach);color:var(--coral-t);font-weight:700;margin-right:8px}
+  .drop{display:flex;align-items:center;justify-content:center;text-align:center;min-height:92px;border:2px dashed #ffd3c7;border-radius:12px;background:#fff6ec;color:var(--muted);cursor:pointer;padding:10px}
+  .drop.over{background:#ffe3d6}
+  .drop input{display:none}
+  button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:9px 20px;cursor:pointer;background:var(--coral);color:#fff;margin-top:12px;margin-right:8px}
+  button.alt{background:#ffe3d6;color:var(--coral-t)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  #msg{margin-left:6px;color:var(--muted)} #msg.err{color:#c0392b;font-weight:700}
+  .row{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;margin:6px 0}
+  .row span{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
+  .row input{width:100%;padding:8px 10px;border:1px solid #cfe3fa;border-radius:8px;font:inherit;color:var(--navy)}
+  #rows{max-height:300px;overflow:auto;padding-right:4px}
+  video{width:100%;aspect-ratio:16/9;border-radius:14px;background:linear-gradient(135deg,#ffe3d6,#d9ecff 60%,#fff0b8);margin-top:8px}
+  code{background:#ffe3d6;border-radius:6px;padding:1px 6px;color:var(--coral-t)}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>Tone<b>bridge</b> Studio</h1>
+  <p>Do you have a video or audio file with no captions? Add it here. Tonebridge listens, writes the captions with times, and then the extension can dub it with feeling.</p>
+
+  <section class="card">
+    <h2><span class="badge">1</span>Choose your file</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="audio/*,video/*">
+      <span id="dropText">Click to choose an audio or video file (up to 25 MB), or drag it here</span>
+    </label>
+    <button id="go" disabled>Make captions</button><span id="msg"></span>
+  </section>
+
+  <section class="card blue" id="step2" hidden>
+    <h2><span class="badge">2</span>Check the captions</h2>
+    <p>Fix any mistakes. Change the words if the listening got something wrong.</p>
+    <div id="rows"></div>
+    <button id="apply">Update the player</button>
+    <button id="dl" class="alt">Download captions (.vtt)</button>
+  </section>
+
+  <section class="card mint" id="step3" hidden>
+    <h2><span class="badge">3</span>Dub it</h2>
+    <div id="playerHost"></div>
+    <p>Click the Tonebridge icon in Chrome, switch it <b>on</b>, choose a language, then press play on the video.</p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var fileInput = document.getElementById("file"), drop = document.getElementById("drop");
+  var go = document.getElementById("go"), msg = document.getElementById("msg");
+  var rowsBox = document.getElementById("rows"), step2 = document.getElementById("step2"), step3 = document.getElementById("step3");
+  var host = document.getElementById("playerHost");
+  var file = null, mediaUrl = null, segments = [], language = "en";
+
+  function say(text, isError) { msg.textContent = text || ""; msg.className = isError ? "err" : ""; }
+
+  function pick(f) {
+    if (!f) return;
+    file = f;
+    document.getElementById("dropText").textContent = f.name + "  (" + (f.size / 1048576).toFixed(1) + " MB)";
+    go.disabled = false;
+    say("");
+  }
+  fileInput.addEventListener("change", function () { pick(fileInput.files[0]); });
+  ["dragenter", "dragover"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.add("over"); }); });
+  ["dragleave", "drop"].forEach(function (n) { drop.addEventListener(n, function (e) { e.preventDefault(); drop.classList.remove("over"); }); });
+  drop.addEventListener("drop", function (e) { if (e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
+
+  function pad(n, w) { n = String(n); while (n.length < w) n = "0" + n; return n; }
+  function stamp(sec) {
+    var ms = Math.round(sec * 1000), h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000), s = Math.floor(ms % 60000 / 1000);
+    return pad(h, 2) + ":" + pad(m, 2) + ":" + pad(s, 2) + "." + pad(ms % 1000, 3);
+  }
+  function shortStamp(sec) { var m = Math.floor(sec / 60), s = sec - m * 60; return pad(m, 2) + ":" + pad(s.toFixed(1), 4); }
+
+  function readTexts() {
+    var inputs = rowsBox.querySelectorAll("input");
+    for (var i = 0; i < segments.length; i++) segments[i].text = inputs[i].value.replace(/\s+/g, " ").trim();
+  }
+  function buildVtt() {
+    var out = "WEBVTT\n\n";
+    segments.forEach(function (s) { if (s.text) out += stamp(s.start) + " --> " + stamp(s.end) + "\n" + s.text + "\n\n"; });
+    return out;
+  }
+
+  function renderRows() {
+    rowsBox.innerHTML = "";
+    segments.forEach(function (s) {
+      var row = document.createElement("div"); row.className = "row";
+      var t = document.createElement("span"); t.textContent = shortStamp(s.start) + " – " + shortStamp(s.end);
+      var inp = document.createElement("input"); inp.type = "text"; inp.value = s.text;
+      row.appendChild(t); row.appendChild(inp); rowsBox.appendChild(row);
+    });
+  }
+
+  // (Re)build the video player with the captions inside it. A brand-new video element makes
+  // the Tonebridge extension read the new captions.
+  function mountPlayer() {
+    var keepTime = 0, old = host.querySelector("video");
+    if (old) keepTime = old.currentTime;
+    host.innerHTML = "";
+    if (!mediaUrl) mediaUrl = URL.createObjectURL(file);
+    var v = document.createElement("video");
+    v.controls = true; v.preload = "auto"; v.src = mediaUrl;
+    var track = document.createElement("track");
+    track.kind = "captions"; track.label = "Captions"; track.srclang = language || "en"; track.default = true;
+    track.src = URL.createObjectURL(new Blob([buildVtt()], { type: "text/vtt" }));
+    v.appendChild(track);
+    v.addEventListener("loadedmetadata", function () { if (keepTime) v.currentTime = keepTime; });
+    host.appendChild(v);
+  }
+
+  go.addEventListener("click", function () {
+    if (!file) return;
+    go.disabled = true; say("Listening to your file… this can take a minute.");
+    var fd = new FormData(); fd.append("file", file);
+    fetch("/api/transcribe", { method: "POST", body: fd })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.j.error || "Something went wrong.");
+        segments = res.j.segments || []; language = res.j.language || "en";
+        if (!segments.length) throw new Error("No speech was found in this file.");
+        if (mediaUrl) { URL.revokeObjectURL(mediaUrl); mediaUrl = null; }
+        renderRows(); step2.hidden = false; step3.hidden = false; mountPlayer();
+        say("Done: " + segments.length + " caption lines.");
+      })
+      .catch(function (e) {
+        say(e.message === "Failed to fetch" ? "Cannot reach the Tonebridge server. Is it running?" : e.message, true);
+      })
+      .then(function () { go.disabled = false; });
+  });
+
+  document.getElementById("apply").addEventListener("click", function () { readTexts(); mountPlayer(); say("Player updated."); });
+  document.getElementById("dl").addEventListener("click", function () {
+    readTexts();
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([buildVtt()], { type: "text/vtt" }));
+    a.download = (file && file.name ? file.name.replace(/\.[^.]+$/, "") : "captions") + ".vtt";
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+})();
+</script>
+</body>
+</html>

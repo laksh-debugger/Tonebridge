@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tonebridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div class="logo">Tone<b>bridge</b></div>
+    <label class="switch" title="Turn dubbing on or off">
+      <input type="checkbox" id="enabled">
+      <span class="slider"></span>
+    </label>
+  </header>
+  <p class="tag">Dubbing that keeps the feeling</p>
+
+  <div class="card" id="statusCard">
+    <div class="row"><span class="dot" id="dot"></span><span id="statusText">Starting…</span></div>
+    <div class="sub" id="statusSub"></div>
+  </div>
+
+  <label class="field">Dub language
+    <select id="lang">
+      <option value="hi">Hindi</option>
+      <option value="en">English</option>
+      <option value="es">Spanish</option>
+      <option value="fr">French</option>
+      <option value="de">German</option>
+      <option value="ja">Japanese</option>
+      <option value="same">Same language (emotion only)</option>
+    </select>
+  </label>
+
+  <label class="field">Voice
+    <select id="engine">
+      <option value="browser">Free (browser voice)</option>
+      <option value="elevenlabs">Premium (ElevenLabs)</option>
+    </select>
+  </label>
+
+  <label class="field">Original sound: <span id="volText">12%</span>
+    <input type="range" id="origVolume" min="0" max="100" value="12">
+  </label>
+
+  <label class="check"><input type="checkbox" id="showText"> Show the dubbed text on the video</label>
+
+  <details>
+    <summary>Server</summary>
+    <label class="field">Server address
+      <input type="text" id="backendUrl" placeholder="http://127.0.0.1:8000">
+    </label>
+    <div class="sub" id="health">Checking server…</div>
+  </details>
+
+  <script src="popup.js"></script>
+</body>
+</html>
